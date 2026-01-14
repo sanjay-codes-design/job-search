@@ -10,42 +10,42 @@ def extract_contacts(description):
     if not isinstance(description, str):
         return None, None
     
-    # Regex for Emails
     email_pattern = r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}'
     emails = list(set(re.findall(email_pattern, description)))
     
-    # Regex for Phone Numbers (Indian & Intl)
     phone_pattern = r'(?:\+91[\-\s]?)?[6789]\d{4}[\-\s]?\d{5}|0\d{2,4}[\-\s]?\d{6,8}'
     phones = list(set(re.findall(phone_pattern, description)))
 
     return emails, phones
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/', methods=['GET'])
 def index():
     jobs_data = []
-    search_term = ""
-    location = ""
+    # Get parameters from URL (e.g., ?job_title=Flutter&page=2)
+    search_term = request.args.get('job_title', '')
+    location = request.args.get('location', '')
+    page = int(request.args.get('page', 1))  # Default to page 1
     
-    if request.method == 'POST':
-        search_term = request.form.get('job_title')
-        location = request.form.get('location')
-        
+    # Configuration
+    RESULTS_PER_PAGE = 10  # Keep this low (10-15) to prevent Timeouts!
+    offset = (page - 1) * RESULTS_PER_PAGE
+
+    if search_term and location:
         try:
-            # Scrape LinkedIn, Indeed, and Glassdoor
+            # Scrape with Offset (Pagination)
             jobs = scrape_jobs(
-                site_name=["linkedin", "indeed", "glassdoor"],
+                site_name=["linkedin", "indeed"], # Glassdoor is very slow, removed for speed
                 search_term=search_term,
                 location=location,
-                results_wanted=20, 
+                results_wanted=RESULTS_PER_PAGE, 
+                offset=offset, # <--- This handles the pagination
                 hours_old=72,
-                country_indeed='india'
+                country_indeed='in'
             )
             
             if not jobs.empty:
                 for index, row in jobs.iterrows():
                     emails, phones = extract_contacts(row.get('description', ''))
-                    
-                    # Identify the site based on the URL or the scraper data
                     site_name = row.get('site', 'Unknown') 
                     
                     jobs_data.append({
@@ -53,7 +53,7 @@ def index():
                         'company': row.get('company'),
                         'location': row.get('location'),
                         'url': row.get('job_url'),
-                        'site': site_name,  # Passing the site name (indeed, linkedin, etc.)
+                        'site': site_name,
                         'emails': emails,
                         'phones': phones,
                         'has_contact': bool(emails or phones)
@@ -62,8 +62,17 @@ def index():
         except Exception as e:
             print(f"Error: {e}")
 
-    return render_template('index.html', jobs=jobs_data, search_term=search_term, location=location)
+    # Calculate next/prev page numbers
+    next_page = page + 1
+    prev_page = page - 1 if page > 1 else None
+
+    return render_template('index.html', 
+                         jobs=jobs_data, 
+                         search_term=search_term, 
+                         location=location, 
+                         page=page, 
+                         next_page=next_page, 
+                         prev_page=prev_page)
 
 if __name__ == '__main__':
-
     app.run(debug=True, port=5000)
