@@ -36,7 +36,7 @@ def index():
                 site_name=["linkedin", "indeed", "glassdoor"],
                 search_term=search_term,
                 location=location,
-                results_wanted=100, 
+                results_wanted=20, 
                 hours_old=72,
                 country_indeed='india'
             )
@@ -65,4 +65,5 @@ def index():
     return render_template('index.html', jobs=jobs_data, search_term=search_term, location=location)
 
 if __name__ == '__main__':
+
     app.run(debug=True, port=5000)
