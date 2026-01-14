@@ -40,7 +40,7 @@ def index():
                 results_wanted=RESULTS_PER_PAGE, 
                 offset=offset, # <--- This handles the pagination
                 hours_old=72,
-                country_indeed='in'
+                country_indeed='india'
             )
             
             if not jobs.empty:
@@ -76,3 +76,4 @@ def index():
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
+
